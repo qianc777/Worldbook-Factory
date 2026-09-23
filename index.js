@@ -1,7 +1,7 @@
 import { worldInfoCache } from '../../../world-info.js';
 import { extensionTypes } from '../../../extensions.js';
 import { createTavernBridge } from './bridge.js';
-import { createExtensionUpdater, EXTENSION_VERSION } from './updater.js?v=1.1.0';
+import { createExtensionUpdater, EXTENSION_VERSION } from './updater.js?v=1.1.1';
 
 const DIALOG_ID = 'worldbook-workshop-dialog';
 let dialog;
@@ -153,17 +153,34 @@ function mount() {
   if (parent && !document.getElementById('ww-settings')) {
     const section = document.createElement('div');
     section.id = 'ww-settings';
-    section.className = 'extension_container ww-settings-card';
-    const title = document.createElement('h4');
+    section.className = 'extension_container';
+    const drawer = document.createElement('div'); drawer.className = 'inline-drawer';
+    const header = document.createElement('div');
+    header.id = 'ww-settings-toggle'; header.className = 'inline-drawer-toggle inline-drawer-header';
+    header.setAttribute('role', 'button'); header.tabIndex = 0;
+    header.setAttribute('aria-expanded', 'false'); header.setAttribute('aria-controls', 'ww-settings-content');
+    const title = document.createElement('b'); title.className = 'ww-settings-title';
     const name = document.createElement('span'); name.textContent = '世界书工坊';
     const version = document.createElement('span'); version.className = 'ww-version'; version.textContent = `v${EXTENSION_VERSION}`;
     title.append(icon('book'), name, version);
+    const chevron = document.createElement('div');
+    chevron.className = 'inline-drawer-icon fa-solid fa-circle-chevron-down down'; chevron.setAttribute('aria-hidden', 'true');
+    header.append(title, chevron);
+    const content = document.createElement('div');
+    content.id = 'ww-settings-content'; content.className = 'inline-drawer-content';
+    header.addEventListener('keydown', event => {
+      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); header.click(); }
+    });
+    // SillyTavern owns the click/animation. Observe its icon state for accessibility.
+    new MutationObserver(() => header.setAttribute('aria-expanded', String(chevron.classList.contains('up'))))
+      .observe(chevron, { attributes: true, attributeFilter: ['class'] });
     const description = document.createElement('p');
     description.textContent = '编辑、排序、批量整理。你的世界设定，一处打理。';
     const actions = document.createElement('div'); actions.className = 'ww-settings-actions';
     actions.append(button('ww-settings-open', '打开工坊', 'book', openWorkshop, 'menu_button ww-settings-button'));
     updateControls(actions, 'ww-settings', 'menu_button ww-settings-button');
-    section.append(title, description, actions, updateStatus());
+    content.append(description, actions, updateStatus());
+    drawer.append(header, content); section.append(drawer);
     parent.append(section);
   }
   const menu = document.getElementById('extensionsMenu');

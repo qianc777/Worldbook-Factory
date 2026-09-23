@@ -1,6 +1,6 @@
 {
   "name": "sillytavern-worldbook-workshop",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "private": true,
   "type": "module",
   "description": "SillyTavern 世界书图形化编辑扩展",

@@ -1,4 +1,4 @@
-export const EXTENSION_VERSION = '1.1.0';
+export const EXTENSION_VERSION = '1.1.1';
 export const REPOSITORY_URL = 'https://github.com/qianc777/Worldbook-Factory';
 
 function problem(message, code) {
