@@ -7,7 +7,7 @@
 ## 通过 GitHub 安装
 
 1. 打开酒馆 → 扩展 → 安装扩展。
-2. 粘贴仓库地址：**https://github.com/qianc777/Worldbook-Factory**。
+2. 粘贴仓库地址：[https://github.com/qianc777/Worldbook-Factory](https://github.com/qianc777/Worldbook-Factory)。
 3. 点击安装，完成后刷新酒馆。
 4. 在扩展设置、聊天框的扩展菜单或原生世界书面板里点击“世界书工坊”。
 
