@@ -1,3 +1,5 @@
+import './app.js?v=1.1.0';
+
 (() => {
   'use strict';
   const editor = window.WorldbookEditor;
@@ -83,7 +85,7 @@
 
   async function save() {
     if (!connected || busy) return;
-    if (!editor.canSave()) { editor.notify('请先处理未应用的 JSON、无效字段或打开的清理预览。', true); return; }
+    if (!editor.canSave()) { editor.notify('请先处理未应用的 JSON、无效字段，或关闭清理/移动窗口。', true); return; }
     editor.flush();
     if (!hasUnsavedChanges()) return;
     const submitted = editor.getDocument();
@@ -124,7 +126,7 @@
       event.preventDefault(); save();
     }
   });
-  window.WorldbookConnection = Object.freeze({ hasUnsavedChanges, confirmReplace });
+  window.WorldbookConnection = Object.freeze({ hasUnsavedChanges, confirmReplace, isBusy: () => busy });
   if (!host?.listBooks || !host?.saveBook) {
     errorMessage = '这是酒馆扩展页面。请先通过酒馆的“安装扩展”安装 GitHub 仓库，再从酒馆里的“世界书工坊”按钮打开。';
     update();

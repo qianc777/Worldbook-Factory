@@ -1,3 +1,5 @@
+import { displayOrder, moveEntries } from './ordering.js?v=1.1.0';
+
 const $ = (selector) => document.querySelector(selector);
 const clone = (value) => JSON.parse(JSON.stringify(value));
 
@@ -17,6 +19,7 @@ const fieldMap = {
 };
 
 let commitTimer, pendingBefore = null, rawDraft = false;
+let moveDialogIds = [], moveDialogVersion = '';
 const commitTags = [];
 function flushEditor() { commitTags.forEach(commit => commit()); flushPending(); }
 function changed() { window.dispatchEvent(new CustomEvent("worldbook:changed")); }
@@ -72,29 +75,163 @@ function filteredEntries() {
     if (!q) return true;
     return [e.comment, e.content, ...(e.key || []), ...(e.keysecondary || [])].some(v => String(v || "").toLocaleLowerCase().includes(q));
   });
+  const positions = new Map(displayOrder(state.book).map((id, index) => [id, index]));
   list.sort((a, b) => {
     const ea = a[1], eb = b[1];
     if (state.sort === "title") return String(ea.comment).localeCompare(String(eb.comment), "zh-CN");
     if (state.sort === "order") return (Number(ea.order) || 0) - (Number(eb.order) || 0);
     if (state.sort === "uid") return (Number(ea.uid) || 0) - (Number(eb.uid) || 0);
-    return (Number(ea.displayIndex) || 0) - (Number(eb.displayIndex) || 0);
+    return positions.get(a[0]) - positions.get(b[0]);
   });
   return list;
 }
 
 function renderList() {
   const list = filteredEntries();
+  const canDrag = isManualView() && entries().length > 1;
   $("#resultCount").textContent = `${list.length} / ${entries().length} 项`;
   $("#selectVisible").checked = list.length > 0 && list.every(([id]) => state.selected.has(id));
   $("#entryList").innerHTML = list.map(([id, e]) => {
     const snippet = (e.content || "").replace(/\s+/g, " ").trim();
-    return `<div class="entry-item ${id === state.activeId ? "active" : ""}" data-id="${esc(id)}">
-      <input class="entry-check" type="checkbox" ${state.selected.has(id) ? "checked" : ""} aria-label="选择 ${esc(e.comment)}">
-      <div class="entry-main"><div class="entry-title">${esc(e.comment || "未命名条目")}</div><div class="entry-snippet">${esc((e.key || []).join(" · ") || snippet || "无内容")}</div></div>
-      <div class="entry-badges">${e.constant ? '<span class="badge constant">常驻</span>' : ""}${e.disable ? '<span class="badge disabled">禁用</span>' : ""}</div>
+    const title = esc(e.comment || "未命名条目");
+    return `<div class="entry-item ${id === state.activeId ? "active" : ""} ${state.selected.has(id) ? "selected" : ""}" data-id="${esc(id)}">
+      <input class="entry-check" type="checkbox" ${state.selected.has(id) ? "checked" : ""} aria-label="选择 ${title}">
+      <button class="entry-drag" type="button" draggable="false" ${canDrag ? "" : "disabled"} aria-label="拖动 ${title}" title="拖动调整显示顺序；勾选后可成组移动">⠿</button>
+      <button type="button" class="entry-main" aria-label="编辑 ${title}"><span class="entry-title" title="${title}">${title}</span><span class="entry-bottom"><span class="entry-snippet">${esc((e.key || []).join(" · ") || snippet || "无内容")}</span><span class="entry-badges"><span class="entry-uid">#${esc(e.uid ?? id)}</span>${e.constant ? '<span class="badge constant">常驻</span>' : ""}${e.disable ? '<span class="badge disabled">禁用</span>' : ""}</span></span></button>
     </div>`;
   }).join("") || '<div class="empty-state" style="height:220px"><p>没有符合条件的条目</p></div>';
   renderBulkBar();
+  renderMoveTools();
+}
+
+function isManualView() { return state.sort === 'display' && state.filter === 'all' && !state.query.trim(); }
+function moveTargets() { return state.selected.size ? displayOrder(state.book).filter(id => state.selected.has(id)) : state.activeId == null ? [] : [state.activeId]; }
+function renderMoveTools() {
+  const order = displayOrder(state.book), targets = new Set(moveTargets());
+  const disabled = !isManualView() || !targets.size || order.length < 2;
+  $('#moveUpBtn').disabled = disabled || !order.some((id, index) => index > 0 && targets.has(id) && !targets.has(order[index - 1]));
+  $('#moveDownBtn').disabled = disabled || !order.some((id, index) => index < order.length - 1 && targets.has(id) && !targets.has(order[index + 1]));
+  $('#moveToBtn').disabled = disabled || targets.size === order.length;
+  $('#moveHint').textContent = !isManualView() ? '当前有筛选或使用了其他排序；恢复完整显示顺序后可移动。' : state.selected.size
+    ? `已勾选 ${targets.size} 项，可成组拖动或移动。` : '拖动 ⠿ 调整顺序；勾选后可批量移动。';
+  $('#restoreOrderViewBtn').hidden = isManualView();
+  for (const [action, source] of [['move-up', '#moveUpBtn'], ['move-down', '#moveDownBtn'], ['move-position', '#moveToBtn']]) {
+    $(`[data-bulk="${action}"]`).disabled = $(source).disabled;
+  }
+}
+
+function arrange(ids, destination) {
+  if (!guardRaw()) return;
+  if (!$('#entryForm').reportValidity()) return;
+  if (!isManualView()) { toast('请先恢复完整的显示顺序，再移动条目。', true); return; }
+  flushEditor();
+  const before = snapshot();
+  try {
+    const result = moveEntries(state.book, ids, destination);
+    if (!result.changed) { toast('条目已经在这个位置'); return; }
+    checkpoint(before); renderAll();
+    const first = result.ids.find(id => ids.includes(id));
+    $('#entryList').querySelector(`[data-id="${CSS.escape(first)}"]`)?.scrollIntoView({ block: 'nearest' });
+    toast(`已移动 ${result.count} 个条目 · 可撤销，保存后写回酒馆`);
+  } catch (error) { toast(error.message, true); }
+}
+
+function openMoveDialog() {
+  if (!guardRaw() || !isManualView()) return;
+  if (!$('#entryForm').reportValidity()) return;
+  flushEditor(); moveDialogIds = moveTargets();
+  if (!moveDialogIds.length || moveDialogIds.length === entries().length) return;
+  moveDialogVersion = snapshot();
+  const maximum = entries().length - moveDialogIds.length + 1;
+  $('#moveDialogTitle').textContent = `移动 ${moveDialogIds.length} 个条目`;
+  $('#moveDescription').textContent = moveDialogIds.length === 1 ? state.book.entries[moveDialogIds[0]].comment || '未命名条目' : '选中的条目会保持相对顺序，作为一组放到指定位置。';
+  $('#movePositionInput').max = String(maximum);
+  $('#movePositionInput').value = String(Math.min(maximum, displayOrder(state.book).indexOf(moveDialogIds[0]) + 1));
+  $('#moveRangeHint').textContent = `可选位置：1–${maximum}`;
+  $('#moveDialog').showModal(); $('#movePositionInput').select();
+}
+
+function setupEntryDrag() {
+  const list = $('#entryList');
+  let gesture = null;
+  const clearDropMark = () => list.querySelectorAll('.drop-before, .drop-after').forEach(row => row.classList.remove('drop-before', 'drop-after'));
+  const finish = () => {
+    const prior = gesture; gesture = null;
+    clearDropMark(); list.querySelectorAll('.dragging').forEach(row => row.classList.remove('dragging'));
+    document.body.classList.remove('dragging-entries');
+    if (prior?.handle.hasPointerCapture(prior.pointerId)) prior.handle.releasePointerCapture(prior.pointerId);
+    return prior;
+  };
+  list.addEventListener('pointerdown', event => {
+    const handle = event.target.closest('.entry-drag');
+    if (!handle || handle.disabled || event.button !== 0) return;
+    if (!isManualView() || !guardRaw() || !$('#entryForm').reportValidity()) { event.preventDefault(); return; }
+    event.preventDefault();
+    const id = handle.closest('.entry-item').dataset.id;
+    flushEditor();
+    const currentHandle = list.querySelector(`[data-id="${CSS.escape(id)}"] .entry-drag`);
+    gesture = { ids: state.selected.has(id) ? moveTargets() : [id], pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, started: false, target: null, handle: currentHandle };
+    currentHandle.setPointerCapture(event.pointerId);
+  });
+  list.addEventListener('pointermove', event => {
+    if (!gesture || gesture.pointerId !== event.pointerId) return;
+    if (!gesture.started && Math.hypot(event.clientX - gesture.startX, event.clientY - gesture.startY) < 5) return;
+    gesture.started = true; event.preventDefault(); clearDropMark(); gesture.target = null;
+    document.body.classList.add('dragging-entries');
+    gesture.ids.forEach(id => list.querySelector(`[data-id="${CSS.escape(id)}"]`)?.classList.add('dragging'));
+    const bounds = list.getBoundingClientRect();
+    if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) return;
+    if (event.clientY < bounds.top + 32) list.scrollTop -= 12;
+    else if (event.clientY > bounds.bottom - 32) list.scrollTop += 12;
+    const row = document.elementFromPoint(event.clientX, event.clientY)?.closest('.entry-item');
+    if (!row || !list.contains(row) || gesture.ids.includes(row.dataset.id)) return;
+    const rect = row.getBoundingClientRect();
+    const placement = event.clientY < rect.top + rect.height / 2 ? 'before' : 'after';
+    row.classList.add(`drop-${placement}`);
+    gesture.target = { targetId: row.dataset.id, placement };
+  });
+  list.addEventListener('pointerup', event => {
+    if (!gesture || gesture.pointerId !== event.pointerId) return;
+    const completed = finish();
+    if (completed.started && completed.target) arrange(completed.ids, completed.target);
+  });
+  list.addEventListener('pointercancel', finish);
+  list.addEventListener('lostpointercapture', () => { if (gesture) finish(); });
+  document.addEventListener('keydown', event => { if (gesture && event.key === 'Escape') { event.preventDefault(); finish(); } });
+}
+
+function setupSidebarResize() {
+  const workspace = $('.workspace'), separator = $('#sidebarResizer');
+  const storageKey = 'worldbook-factory.sidebar-width';
+  let preferred = null, resizing = false;
+  try { const saved = Number(localStorage.getItem(storageKey)); if (saved >= 300 && saved <= 720) preferred = saved; } catch { /* Layout still works when storage is unavailable. */ }
+  const limits = () => ({ minimum: 300, maximum: Math.max(300, Math.min(720, workspace.clientWidth - 368, Math.floor(workspace.clientWidth * .65))) });
+  const setWidth = (value, persist = false) => {
+    if (window.matchMedia('(max-width: 800px)').matches || !workspace.clientWidth) return;
+    const { minimum, maximum } = limits();
+    const width = Math.round(Math.max(minimum, Math.min(maximum, value)));
+    workspace.style.setProperty('--sidebar-width', `${width}px`);
+    separator.setAttribute('aria-valuemin', String(minimum)); separator.setAttribute('aria-valuemax', String(maximum)); separator.setAttribute('aria-valuenow', String(width));
+    separator.setAttribute('aria-valuetext', `条目列表宽 ${width} 像素`);
+    if (persist) { preferred = width; try { localStorage.setItem(storageKey, String(width)); } catch { /* Optional preference. */ } }
+  };
+  const refresh = () => setWidth(preferred ?? Math.min(520, Math.max(340, workspace.clientWidth * .36)));
+  separator.addEventListener('pointerdown', event => {
+    if (event.button !== 0) return;
+    event.preventDefault(); resizing = true; separator.setPointerCapture(event.pointerId); document.body.classList.add('resizing-sidebar');
+  });
+  separator.addEventListener('pointermove', event => { if (resizing) setWidth(event.clientX - workspace.getBoundingClientRect().left, true); });
+  const stop = () => { resizing = false; document.body.classList.remove('resizing-sidebar'); };
+  separator.addEventListener('pointerup', stop); separator.addEventListener('pointercancel', stop); separator.addEventListener('lostpointercapture', stop);
+  separator.addEventListener('dblclick', () => { preferred = null; try { localStorage.removeItem(storageKey); } catch { /* Optional preference. */ } refresh(); });
+  separator.addEventListener('keydown', event => {
+    const current = $('.sidebar').getBoundingClientRect().width;
+    const { minimum, maximum } = limits();
+    const values = { ArrowLeft: current - 20, ArrowRight: current + 20, Home: minimum, End: maximum };
+    if (!(event.key in values)) return;
+    event.preventDefault(); setWidth(values[event.key], true);
+  });
+  new ResizeObserver(refresh).observe(workspace); refresh();
 }
 
 function renderTags(containerId, values) {
@@ -268,6 +405,8 @@ function confirmRemoveDuplicates() {
   closeDuplicatePreview(); checkpoint(before); renderAll(); toast(`已删除 ${count} 个重复条目`);
 }
 function bulkAction(action) {
+  if (action === 'move-position') return openMoveDialog();
+  if (action === 'move-up' || action === 'move-down') return arrange(moveTargets(), action.slice(5));
   if (!guardRaw()) return; flushPending();
   const ids = [...state.selected]; if (!ids.length) return; if (action === "delete") return deleteIds(ids);
   const before = snapshot();
@@ -319,10 +458,30 @@ function bind() {
   setupTagEditor("#primaryTags", "key"); setupTagEditor("#secondaryTags", "keysecondary");
   $("#entryList").addEventListener("click", ev => {
     const item = ev.target.closest(".entry-item"); if (!item) return; const id = item.dataset.id;
+    if (ev.target.closest('.entry-drag')) return;
     if (ev.target.matches("input[type=checkbox]")) { ev.target.checked ? state.selected.add(id) : state.selected.delete(id); renderList(); return; }
-    if (!guardRaw()) return; flushPending();
+    if (!guardRaw()) return; flushEditor();
     state.activeId = id; renderList(); renderEditor();
   });
+  $('#moveUpBtn').onclick = () => arrange(moveTargets(), 'up');
+  $('#moveDownBtn').onclick = () => arrange(moveTargets(), 'down');
+  $('#moveToBtn').onclick = openMoveDialog;
+  $('#cancelMoveBtn').onclick = () => $('#moveDialog').close();
+  $('#moveToTopBtn').onclick = () => { $('#movePositionInput').value = '1'; };
+  $('#moveToBottomBtn').onclick = () => { $('#movePositionInput').value = $('#movePositionInput').max; };
+  $('#moveDialog').addEventListener('close', () => { moveDialogIds = []; moveDialogVersion = ''; });
+  $('#moveForm').addEventListener('submit', event => {
+    event.preventDefault();
+    if (!$('#moveForm').reportValidity()) return;
+    const ids = [...moveDialogIds], position = Number($('#movePositionInput').value);
+    if (moveDialogVersion !== snapshot()) { $('#moveDialog').close(); toast('条目已变化，请重新选择移动位置。', true); return; }
+    $('#moveDialog').close(); arrange(ids, { position });
+  });
+  $('#restoreOrderViewBtn').onclick = () => {
+    state.query = ''; state.filter = 'all'; state.sort = 'display';
+    $('#searchInput').value = ''; $('#statusFilter').value = 'all'; $('#sortSelect').value = 'display'; renderList();
+  };
+  setupEntryDrag();
   $("#searchInput").addEventListener("input", ev => { state.query = ev.target.value; renderList(); });
   $("#bookNameInput").addEventListener("input", ev => { state.bookName = ev.target.value; renderMeta(); changed(); });
   $("#statusFilter").addEventListener("change", ev => { state.filter = ev.target.value; renderList(); });
@@ -342,6 +501,7 @@ function bind() {
   $("#formatBtn").onclick = () => { if (!guardRaw()) return; flushPending(); const e = activeEntry(); const before = snapshot(); e.content = (e.content || "").replace(/^(?:[ \t]*\r?\n)+|(?:\r?\n[ \t]*)+$/g, ""); checkpoint(before); renderEditor(); toast("已整理首尾空行"); };
   document.addEventListener("keydown", ev => {
     if (ev.isComposing) return;
+    if ($('#moveDialog').open) return;
     if (!$("#dedupeModal").hidden) {
       if (ev.key === "Escape") { closeDuplicatePreview(); $("#dedupeBtn").focus(); }
       if (ev.ctrlKey || ev.metaKey) ev.preventDefault();
@@ -367,11 +527,12 @@ function bind() {
 function loadDocument(book, name) {
   const parsed = normalizeBook(clone(book));
   clearTimeout(commitTimer); pendingBefore = null; rawDraft = false;
-  state.book = parsed; state.bookName = name; state.activeId = Object.keys(parsed.entries)[0] ?? null;
-  state.selected.clear(); state.history = []; state.future = []; state.query = ""; state.filter = "all";
-  $("#searchInput").value = ""; $("#statusFilter").value = "all";
+  state.book = parsed; state.bookName = name; state.activeId = displayOrder(parsed)[0] ?? null;
+  state.selected.clear(); state.history = []; state.future = []; state.query = ""; state.filter = "all"; state.sort = 'display';
+  $("#searchInput").value = ""; $("#statusFilter").value = "all"; $('#sortSelect').value = 'display';
+  if ($('#moveDialog').open) $('#moveDialog').close();
   $("#primaryTags input").value = ""; $("#secondaryTags input").value = "";
-  closeDuplicatePreview(); renderAll(); changed();
+  closeDuplicatePreview(); renderAll(); $('#entryList').scrollTop = 0; changed();
 }
 
 window.WorldbookEditor = Object.freeze({
@@ -383,7 +544,7 @@ window.WorldbookEditor = Object.freeze({
   hasPendingTags: () => ["#primaryTags input", "#secondaryTags input"].some(selector => $(selector).value.trim()),
   flush: flushEditor,
   notify: toast,
-  canSave: () => guardRaw() && $("#entryForm").checkValidity() && $("#dedupeModal").hidden,
+  canSave: () => guardRaw() && $("#entryForm").checkValidity() && $("#dedupeModal").hidden && !$('#moveDialog').open,
 });
 
 async function init() {
@@ -392,5 +553,6 @@ async function init() {
   state.bookName = "世界书";
   state.activeId = null;
   renderAll();
+  setupSidebarResize();
 }
 init();
