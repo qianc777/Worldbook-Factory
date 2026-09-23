@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light">
+  <title>世界书工坊 · 酒馆扩展</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">世</div>
+        <div>
+          <h1>世界书工坊</h1>
+          <p id="bookMeta">正在载入世界书...</p>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button class="icon-button" id="undoBtn" title="撤销 (Ctrl+Z)" aria-label="撤销">↶</button>
+        <button class="icon-button" id="redoBtn" title="重做 (Ctrl+Y)" aria-label="重做">↷</button>
+        <button class="button secondary" id="importBtn">导入</button>
+        <button class="button primary" id="exportBtn">导出 JSON</button>
+        <button class="button primary" id="saveTavernBtn" disabled>保存到酒馆</button>
+        <input id="fileInput" type="file" accept="application/json,.json" hidden>
+      </div>
+    </header>
+
+    <section class="tavern-bar" aria-label="酒馆世界书连接">
+      <div class="tavern-picker">
+        <label for="tavernBookSelect">酒馆世界书</label>
+        <select id="tavernBookSelect"><option value="">请选择世界书…</option></select>
+        <button class="button secondary" id="openTavernBtn" type="button" disabled>打开</button>
+        <button class="button secondary" id="refreshBooksBtn" type="button">刷新列表</button>
+        <button class="button secondary" id="newBookBtn" type="button">新建世界书</button>
+      </div>
+      <p id="connectionStatus" role="status" aria-live="polite">正在连接酒馆…</p>
+    </section>
+
+    <main class="workspace">
+      <aside class="sidebar">
+        <div class="sidebar-tools">
+          <label class="book-name-field">
+            <span>世界书名称</span>
+            <input id="bookNameInput" type="text" value="世界书" placeholder="输入世界书名称">
+            <small id="bookNameHint">新建世界书保存时使用此名称。</small>
+          </label>
+          <div class="search-wrap">
+            <span class="search-icon">⌕</span>
+            <input id="searchInput" type="search" placeholder="搜索标题、关键词或正文">
+            <kbd>Ctrl K</kbd>
+          </div>
+          <div class="filter-row">
+            <select id="statusFilter" aria-label="状态筛选">
+              <option value="all">全部状态</option>
+              <option value="enabled">仅启用</option>
+              <option value="disabled">仅禁用</option>
+              <option value="constant">仅常驻</option>
+            </select>
+            <select id="sortSelect" aria-label="排序方式">
+              <option value="display">显示顺序</option>
+              <option value="order">插入顺序</option>
+              <option value="title">标题</option>
+              <option value="uid">UID</option>
+            </select>
+          </div>
+          <div class="selection-row">
+            <label><input type="checkbox" id="selectVisible"> 选择当前列表</label>
+            <span id="resultCount"></span>
+          </div>
+          <button class="dedupe-button" id="dedupeBtn" type="button">清理重复条目</button>
+        </div>
+        <div id="entryList" class="entry-list"></div>
+        <div class="sidebar-footer">
+          <button class="button secondary wide" id="addBtn">＋ 新建条目</button>
+        </div>
+      </aside>
+
+      <section class="editor-pane">
+        <div id="emptyState" class="empty-state" hidden>
+          <div class="empty-glyph">书</div>
+          <h2>从酒馆选择一本世界书</h2>
+          <p>在上方选择后点击“打开”，或新建条目。</p>
+        </div>
+
+        <form id="entryForm" class="entry-form" autocomplete="off">
+          <div class="editor-header">
+            <div class="title-block">
+              <span class="eyebrow" id="uidLabel">条目 #0</span>
+              <input id="commentInput" class="title-input" aria-label="条目标题" placeholder="条目标题">
+            </div>
+            <div class="header-actions">
+              <label class="switch-label"><input id="disableInput" type="checkbox"><span class="switch"></span><span>禁用</span></label>
+              <button class="icon-button" type="button" id="duplicateBtn" title="复制条目" aria-label="复制条目">⧉</button>
+              <button class="icon-button danger" type="button" id="deleteBtn" title="删除条目" aria-label="删除条目">⌫</button>
+            </div>
+          </div>
+
+          <div class="editor-scroll">
+            <section class="panel trigger-panel">
+              <div class="section-heading">
+                <div><h2>触发规则</h2><p>关键词命中时，条目内容会被注入上下文。</p></div>
+                <label class="switch-label"><input id="constantInput" type="checkbox"><span class="switch"></span><span>常驻条目</span></label>
+              </div>
+              <label class="field">
+                <span>主关键词 <small>回车或逗号添加</small></span>
+                <div class="tag-editor" id="primaryTags"><input placeholder="添加关键词"></div>
+              </label>
+              <div id="secondaryBlock">
+                <div class="logic-row">
+                  <label class="field grow"><span>次关键词</span><div class="tag-editor" id="secondaryTags"><input placeholder="添加次关键词"></div></label>
+                  <label class="field compact"><span>匹配逻辑</span><select id="logicInput"><option value="0">任一匹配（AND ANY）</option><option value="1">非全部匹配（NOT ALL）</option><option value="2">均不匹配（NOT ANY）</option><option value="3">全部匹配（AND ALL）</option></select></label>
+                </div>
+              </div>
+            </section>
+
+            <section class="content-section">
+              <div class="section-heading compact-heading">
+                <div><h2>条目内容</h2><p id="contentStats">0 字符</p></div>
+                <button type="button" class="text-button" id="formatBtn">整理首尾空行</button>
+              </div>
+              <textarea id="contentInput" spellcheck="false" placeholder="输入世界书内容..."></textarea>
+            </section>
+
+            <section class="panel settings-panel">
+              <div class="section-heading"><div><h2>插入设置</h2><p>控制内容进入提示词的位置与优先级。</p></div></div>
+              <div class="settings-grid">
+                <label class="field"><span>插入顺序</span><input id="orderInput" type="number" step="1"></label>
+                <label class="field"><span>插入位置</span><select id="positionInput"><option value="0">角色定义之前</option><option value="1">角色定义之后</option><option value="2">作者注释之前</option><option value="3">作者注释之后</option><option value="4">指定深度</option><option value="5">示例消息之前</option><option value="6">示例消息之后</option><option value="7">自定义出口（Outlet）</option></select></label>
+                <label class="field"><span>注入深度</span><input id="depthInput" type="number" min="0" step="1"></label>
+                <label class="field"><span>触发概率 (%)</span><input id="probabilityInput" type="number" min="0" max="100" step="1"></label>
+                <label class="field"><span>分组</span><input id="groupInput" placeholder="可选"></label>
+                <label class="field"><span>分组权重</span><input id="groupWeightInput" type="number" min="0" step="1"></label>
+                <label class="field"><span>深度插入角色</span><select id="roleInput"><option value="">默认</option><option value="0">系统</option><option value="1">用户</option><option value="2">助手</option></select></label>
+                <label class="field"><span>自定义出口名</span><input id="outletNameInput" placeholder="Outlet 名称"></label>
+              </div>
+              <div class="toggle-grid">
+                <label><input id="selectiveInput" type="checkbox"> 使用次关键词</label>
+                <label><input id="useProbabilityInput" type="checkbox"> 使用触发概率</label>
+                <label><input id="excludeRecursionInput" type="checkbox"> 不可被其他条目递归激活</label>
+                <label><input id="preventRecursionInput" type="checkbox"> 阻止继续递归扫描</label>
+                <label><input id="ignoreBudgetInput" type="checkbox"> 忽略上下文预算</label>
+                <label><input id="vectorizedInput" type="checkbox"> 向量化匹配</label>
+              </div>
+            </section>
+
+            <details class="panel advanced-panel" id="advancedPanel">
+              <summary>高级字段 <span>直接编辑该条目的完整 JSON</span></summary>
+              <div class="advanced-body">
+                <textarea id="rawJsonInput" spellcheck="false"></textarea>
+                <div class="raw-actions"><span id="rawStatus"></span><button class="button secondary" type="button" id="applyRawBtn">应用 JSON</button></div>
+              </div>
+            </details>
+          </div>
+        </form>
+      </section>
+    </main>
+
+    <div id="bulkBar" class="bulk-bar" hidden>
+      <strong id="selectedCount">已选择 0 项</strong>
+      <span class="separator"></span>
+      <button data-bulk="enable">启用</button>
+      <button data-bulk="disable">禁用</button>
+      <button data-bulk="constant">设为常驻</button>
+      <button data-bulk="nonconstant">取消常驻</button>
+      <button data-bulk="order">设置顺序</button>
+      <button data-bulk="prefix">添加关键词</button>
+      <button data-bulk="delete" class="danger-text">删除</button>
+      <button id="clearSelection" class="close-bulk" title="取消选择">×</button>
+    </div>
+
+    <div id="dropOverlay" class="drop-overlay" hidden><div><strong>松开以导入世界书</strong><span>支持 SillyTavern JSON</span></div></div>
+    <div id="dedupeModal" class="modal-overlay" hidden>
+      <section class="dedupe-modal" role="dialog" aria-modal="true" aria-labelledby="dedupeTitle">
+        <header class="modal-header">
+          <div><span class="eyebrow">清理预览</span><h2 id="dedupeTitle">发现重复条目</h2></div>
+          <button class="modal-close" id="closeDedupeBtn" type="button" aria-label="关闭">×</button>
+        </header>
+        <div id="dedupeStats" class="dedupe-stats"></div>
+        <div class="dedupe-legend"><span class="keep-dot"></span>绿色为保留条目 <span class="delete-dot"></span>红色为待删除条目</div>
+        <div id="dedupeGroups" class="dedupe-groups"></div>
+        <footer class="modal-footer">
+          <span id="dedupeSummary"></span>
+          <div><button class="button secondary" id="cancelDedupeBtn" type="button">取消</button><button class="button danger-button" id="confirmDedupeBtn" type="button">删除重复条目</button></div>
+        </footer>
+      </section>
+    </div>
+    <div id="toast" class="toast" hidden></div>
+  </div>
+  <script src="app.js"></script>
+  <script src="tavern-client.js"></script>
+</body>
+</html>
