@@ -1,10 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createExtensionUpdater, extensionIdentity, isWorkshopRepository, REPOSITORY_URL } from '../updater.js';
+import { readFile } from 'node:fs/promises';
+import { createExtensionUpdater, extensionIdentity, isWorkshopRepository, REPOSITORY_URL, EXTENSION_VERSION } from '../updater.js';
 
-const moduleUrl = 'https://tavern.invalid/scripts/extensions/third-party/Worldbook-Factory/index.js?v=1.1.0';
+const moduleUrl = `https://tavern.invalid/scripts/extensions/third-party/Worldbook-Factory/index.js?v=${EXTENSION_VERSION}`;
 function mock(overrides = {}) {
-  const state = { latest: true, scope: 'local', remote: `${REPOSITORY_URL}.git`, installed: '1.1.0', checkStatus: 200, updateStatus: 200, badAck: false, manifestFails: false, ...overrides };
+  const state = { latest: true, scope: 'local', remote: `${REPOSITORY_URL}.git`, installed: EXTENSION_VERSION, checkStatus: 200, updateStatus: 200, badAck: false, manifestFails: false, ...overrides };
   const calls = [];
   const fetchImpl = async (url, options) => {
     calls.push({ url, options });
@@ -40,7 +41,7 @@ test('only the intended GitHub repository is accepted, including SSH remotes', (
 test('already current installation performs no update and needs no reload', async () => {
   const m = mock(), result = await m.updater.checkAndUpdate();
   assert.equal(result.updated, false); assert.equal(result.reloadRequired, false);
-  assert.equal(result.version, '1.1.0');
+  assert.equal(result.version, EXTENSION_VERSION);
   assert.equal(m.calls.filter(call => call.url.endsWith('/update')).length, 0);
 });
 
@@ -97,7 +98,7 @@ test('concurrent update requests are rejected without a second network call', as
   let requests = 0;
   const updater = createExtensionUpdater({ moduleUrl, getTypes: () => ({ 'third-party/Worldbook-Factory': 'local' }), getHeaders: () => ({}), fetchImpl: async url => {
     requests++; await gate;
-    return Response.json(url.endsWith('/version') ? { currentCommitHash: 'a'.repeat(40), isUpToDate: true, remoteUrl: REPOSITORY_URL } : { version: '1.1.0' });
+    return Response.json(url.endsWith('/version') ? { currentCommitHash: 'a'.repeat(40), isUpToDate: true, remoteUrl: REPOSITORY_URL } : { version: EXTENSION_VERSION });
   } });
   const first = updater.checkAndUpdate();
   await assert.rejects(updater.checkAndUpdate(), { code: 'BUSY' });
@@ -112,4 +113,15 @@ test('timeout reports uncertainty without triggering a reload or extra writes', 
   } });
   await assert.rejects(updater.checkAndUpdate(), { code: 'TIMEOUT' });
   assert.equal(requests, 1);
+});
+
+test('published manifest, package and cache-busted assets use the same version', async () => {
+  const read = path => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
+  assert.equal(JSON.parse(await read('manifest.json')).version, EXTENSION_VERSION);
+  assert.equal(JSON.parse(await read('package.json')).version, EXTENSION_VERSION);
+  for (const path of ['index.js', 'editor/index.html', 'editor/app.js', 'editor/tavern-client.js']) {
+    const versions = [...(await read(path)).matchAll(/\?v=(\d+\.\d+\.\d+)/g)].map(match => match[1]);
+    assert.ok(versions.length, `${path} has versioned assets`);
+    assert.ok(versions.every(version => version === EXTENSION_VERSION), `${path} version matches the release`);
+  }
 });
