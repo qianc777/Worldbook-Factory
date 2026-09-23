@@ -1,4 +1,4 @@
-import './app.js?v=1.1.0';
+import './app.js?v=1.1.1';
 
 (() => {
   'use strict';
@@ -114,7 +114,7 @@ import './app.js?v=1.1.0';
     editor.load({ entries: {} }, '新世界书');
     baseline = editor.serialize(); baselineName = '新世界书';
     detachedDraft = true; savedMessage = ''; errorMessage = '';
-    find('#tavernBookSelect').value = ''; update(); find('#bookNameInput').select();
+    find('#tavernBookSelect').value = ''; update(); editor.revealTools(); find('#bookNameInput').select();
   });
   window.addEventListener('worldbook:changed', () => { if (!busy) errorMessage = ''; update(); });
   window.addEventListener('worldbook:imported', () => {

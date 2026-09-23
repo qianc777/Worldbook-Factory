@@ -36,6 +36,18 @@ input, select { min-width: 0; }
 .brand h1 { margin: 0; font-size: 17px; font-weight: 650; }
 .brand p { margin: 3px 0 0; color: #afc1b8; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .top-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.file-tools { display: flex; align-items: center; gap: 8px; }
+.tools-toggle { display: inline-flex; align-items: center; justify-content: center; gap: 5px; white-space: nowrap; }
+.tools-toggle svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.tools-toggle[aria-expanded="false"] svg { transform: rotate(180deg); }
+.compact-book-button { display: flex; align-items: center; gap: 9px; min-width: 0; max-width: 45%; border: 0; background: transparent; color: white; padding: 4px 0; font-weight: 650; text-align: left; }
+#compactBookName { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tools-collapsed .topbar { min-height: 46px; padding: 5px 14px; gap: 10px; }
+.tools-collapsed .top-actions { gap: 5px; }
+.tools-collapsed .topbar .button, .tools-collapsed .topbar .icon-button { min-height: 32px; }
+.tools-collapsed .topbar .icon-button { width: 32px; }
+.tools-collapsed .tavern-bar { padding: 4px 14px; }
+.tools-collapsed #connectionStatus { margin: 0; line-height: 1.5; }
 .button, .icon-button { border: 1px solid transparent; min-height: 36px; padding: 0 14px; background: none; border-radius: 5px; }
 .button.primary { background: #e8c77c; color: #263128; font-weight: 650; }
 .button.secondary { background: var(--white); border-color: var(--line); }
@@ -50,7 +62,7 @@ input, select { min-width: 0; }
 .sidebar-resizer > span { width: 2px; height: 46px; border-radius: 2px; background: #a9bbb0; }
 .sidebar-resizer:hover, .sidebar-resizer:focus-visible, .resizing-sidebar .sidebar-resizer { background: #cfe4d7; border-color: #7baf92; }
 .resizing-sidebar, .resizing-sidebar * { cursor: col-resize !important; user-select: none !important; }
-.sidebar-tools { padding: 12px 14px 8px; border-bottom: 1px solid var(--line); }
+.sidebar-tools { flex: 0 0 auto; padding: 12px 14px 8px; border-bottom: 1px solid var(--line); }
 .book-name-field { position: relative; display: flex; align-items: center; gap: 9px; margin-bottom: 9px; }
 .book-name-field > span { color: var(--muted); font-size: 11px; font-weight: 600; white-space: nowrap; }
 .book-name-field input { flex: 1; width: 100%; height: 34px; border: 1px solid var(--line); border-radius: 5px; padding: 0 10px; background: white; outline: none; font-weight: 600; }
@@ -66,6 +78,10 @@ kbd { position: absolute; right: 8px; font-size: 10px; color: var(--muted); back
 select, input[type="number"], .field > input { height: 36px; border: 1px solid var(--line); border-radius: 4px; padding: 0 10px; background: white; outline: none; }
 .selection-row { display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: 12px; margin-top: 11px; }
 .selection-row label { display: flex; align-items: center; gap: 6px; }
+.list-summary { flex: 0 0 auto; gap: 8px; min-height: 36px; padding: 7px 14px; margin: 0; border-bottom: 1px solid var(--line); }
+.list-summary label { white-space: nowrap; }
+#resultCount { margin-left: auto; white-space: nowrap; }
+.active-view-button { max-width: 110px; padding: 2px 6px; border: 1px solid #d8c28f; border-radius: 4px; color: #80611e; background: #fff9e8; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .list-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; }
 .dedupe-button { min-width: 0; padding: 0 10px; height: 32px; border: 1px solid #d6ded9; border-radius: 6px; background: #f5f7f4; color: #405248; font-size: 12px; white-space: nowrap; }
 .dedupe-button:hover { border-color: #9eb5a8; background: var(--green-soft); color: var(--green); }
@@ -232,6 +248,9 @@ button:focus-visible, .entry-main:focus-visible { outline: 2px solid #468b66; ou
 @media (max-width: 540px) {
   .brand h1 { font-size: 15px; }
   .button { padding: 0 9px; }
+  .tools-collapsed .compact-book-button { max-width: 100%; flex: 1 0 100%; }
+  .tools-collapsed .top-actions { width: 100%; justify-content: flex-end; }
+  .tools-collapsed .tools-toggle { margin-right: auto; }
   .settings-grid, .toggle-grid { grid-template-columns: 1fr; }
   .logic-row { display: block; }
   .logic-row .compact { width: 100%; margin-top: 12px; }

@@ -5,30 +5,34 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="color-scheme" content="light">
   <title>世界书工坊 · 酒馆扩展</title>
-  <link rel="stylesheet" href="styles.css?v=1.1.0">
+  <link rel="stylesheet" href="styles.css?v=1.1.1">
 </head>
 <body>
   <div class="app-shell">
     <header class="topbar">
-      <div class="brand">
+      <div class="brand" id="fullBrand">
         <div class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6c-3-2-6-2-9-1v14c3-1 6-1 9 1 3-2 6-2 9-1V5c-3-1-6-1-9 1Z"/><path d="M12 6v14M6 9h3M15 9h3"/></svg></div>
         <div>
           <h1>世界书工坊</h1>
           <p id="bookMeta">正在载入世界书...</p>
         </div>
       </div>
+      <button id="compactBookBtn" class="compact-book-button" type="button" title="展开选书和工具" aria-label="展开世界书选择和工具" hidden><span id="compactBookName">选择世界书…</span><span aria-hidden="true">⌄</span></button>
       <div class="top-actions">
+        <button class="button secondary tools-toggle" id="toggleToolsBtn" type="button" aria-expanded="true" aria-controls="fileTools tavernPicker sidebarTools"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 10 4-4 4 4"/></svg><span>收起上方</span></button>
         <button class="icon-button" id="undoBtn" title="撤销 (Ctrl+Z)" aria-label="撤销">↶</button>
         <button class="icon-button" id="redoBtn" title="重做 (Ctrl+Y)" aria-label="重做">↷</button>
-        <button class="button secondary" id="importBtn">导入</button>
-        <button class="button primary" id="exportBtn">导出 JSON</button>
+        <div class="file-tools" id="fileTools">
+          <button class="button secondary" id="importBtn">导入</button>
+          <button class="button primary" id="exportBtn">导出 JSON</button>
+          <input id="fileInput" type="file" accept="application/json,.json" hidden>
+        </div>
         <button class="button primary" id="saveTavernBtn" disabled>保存到酒馆</button>
-        <input id="fileInput" type="file" accept="application/json,.json" hidden>
       </div>
     </header>
 
     <section class="tavern-bar" aria-label="酒馆世界书连接">
-      <div class="tavern-picker">
+      <div class="tavern-picker" id="tavernPicker">
         <label for="tavernBookSelect">酒馆世界书</label>
         <select id="tavernBookSelect"><option value="">请选择世界书…</option></select>
         <button class="button secondary" id="openTavernBtn" type="button" disabled>打开</button>
@@ -40,7 +44,7 @@
 
     <main class="workspace">
       <aside class="sidebar" aria-label="世界书条目列表">
-        <div class="sidebar-tools">
+        <div class="sidebar-tools" id="sidebarTools">
           <label class="book-name-field">
             <span>书名</span>
             <input id="bookNameInput" type="text" value="世界书" aria-label="世界书名称" aria-describedby="bookNameHint" placeholder="输入世界书名称">
@@ -65,10 +69,6 @@
               <option value="uid">UID</option>
             </select>
           </div>
-          <div class="selection-row">
-            <label><input type="checkbox" id="selectVisible"> 选择当前列表</label>
-            <span id="resultCount"></span>
-          </div>
           <div class="list-actions">
             <button class="dedupe-button" id="dedupeBtn" type="button">清理重复条目</button>
             <div class="move-actions" aria-label="调整显示顺序">
@@ -79,6 +79,11 @@
           </div>
           <p class="list-order-hint" id="moveHint">拖动条目左侧手柄可排序，勾选后可成组移动。</p>
           <button class="text-button restore-order-view" id="restoreOrderViewBtn" type="button" hidden>清除筛选，恢复显示顺序</button>
+        </div>
+        <div class="selection-row list-summary">
+          <label><input type="checkbox" id="selectVisible"> 选择当前列表</label>
+          <button id="activeViewBtn" class="active-view-button" type="button" hidden>已筛选</button>
+          <span id="resultCount"></span>
         </div>
         <div id="entryList" class="entry-list"></div>
         <div class="sidebar-footer">
@@ -211,6 +216,6 @@
     </div>
     <div id="toast" class="toast" hidden></div>
   </div>
-  <script type="module" src="tavern-client.js?v=1.1.0"></script>
+  <script type="module" src="tavern-client.js?v=1.1.1"></script>
 </body>
 </html>

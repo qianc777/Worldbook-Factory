@@ -1,4 +1,5 @@
-import { displayOrder, moveEntries } from './ordering.js?v=1.1.0';
+import { displayOrder, moveEntries } from './ordering.js?v=1.1.1';
+import { createToolPanels } from './panels.js?v=1.1.1';
 
 const $ = (selector) => document.querySelector(selector);
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -20,6 +21,7 @@ const fieldMap = {
 
 let commitTimer, pendingBefore = null, rawDraft = false;
 let moveDialogIds = [], moveDialogVersion = '';
+let toolPanels;
 const commitTags = [];
 function flushEditor() { commitTags.forEach(commit => commit()); flushPending(); }
 function changed() { window.dispatchEvent(new CustomEvent("worldbook:changed")); }
@@ -90,6 +92,10 @@ function renderList() {
   const list = filteredEntries();
   const canDrag = isManualView() && entries().length > 1;
   $("#resultCount").textContent = `${list.length} / ${entries().length} 项`;
+  const viewSummary = $('#activeViewBtn');
+  viewSummary.hidden = isManualView();
+  viewSummary.textContent = state.query.trim() || state.filter !== 'all' ? '已筛选' : `${$('#sortSelect').selectedOptions[0].textContent}排序`;
+  viewSummary.title = `当前${state.query.trim() ? `搜索“${state.query.trim()}”，` : ''}${$('#statusFilter').selectedOptions[0].textContent}，${$('#sortSelect').selectedOptions[0].textContent}；点击展开工具。`;
   $("#selectVisible").checked = list.length > 0 && list.every(([id]) => state.selected.has(id));
   $("#entryList").innerHTML = list.map(([id, e]) => {
     const snippet = (e.content || "").replace(/\s+/g, " ").trim();
@@ -234,6 +240,18 @@ function setupSidebarResize() {
   new ResizeObserver(refresh).observe(workspace); refresh();
 }
 
+function setupToolPanels() {
+  let storage;
+  try { storage = window.localStorage; } catch { /* Optional preference. */ }
+  toolPanels = createToolPanels({
+    shell: $('.app-shell'), toggle: $('#toggleToolsBtn'),
+    panels: [$('#fileTools'), $('#tavernPicker'), $('#sidebarTools')],
+    brand: $('#fullBrand'), compactBook: $('#compactBookBtn'), storage,
+  });
+  $('#compactBookBtn').onclick = () => { toolPanels.reveal(); $('#tavernBookSelect').focus(); };
+  $('#activeViewBtn').onclick = () => { toolPanels.reveal(); $('#searchInput').focus(); };
+}
+
 function renderTags(containerId, values) {
   const el = $(containerId), input = el.querySelector("input");
   el.querySelectorAll(".tag").forEach(tag => tag.remove());
@@ -272,6 +290,8 @@ function renderMeta() {
   const all = entries().map(([, e]) => e), enabled = all.filter(e => !e.disable).length, chars = all.reduce((n, e) => n + String(e.content || "").length, 0);
   if ($("#bookNameInput").value !== state.bookName) $("#bookNameInput").value = state.bookName;
   $("#bookMeta").textContent = `${state.bookName} · ${all.length} 个条目 · ${enabled} 个启用 · ${chars.toLocaleString()} 字符`;
+  $('#compactBookName').textContent = !all.length && state.bookName === '世界书' ? '选择世界书…' : state.bookName.trim() || '未命名世界书';
+  $('#compactBookBtn').title = `${state.bookName || '世界书'} · 展开选书和工具`;
 }
 function renderBulkBar() { const n = state.selected.size; $("#bulkBar").hidden = !n; $("#selectedCount").textContent = `已选择 ${n} 项`; }
 function renderAll() { renderMeta(); renderList(); renderEditor(); updateUndoButtons(); }
@@ -512,7 +532,7 @@ function bind() {
       }
       return;
     }
-    if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === "k") { ev.preventDefault(); $("#searchInput").focus(); }
+    if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === "k") { ev.preventDefault(); toolPanels.reveal(); $("#searchInput").focus(); }
     if (ev.key === "Escape" && !$("#dedupeModal").hidden) closeDuplicatePreview();
     if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === "z") { ev.preventDefault(); ev.shiftKey ? redo() : undo(); }
     else if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === "y") { ev.preventDefault(); redo(); }
@@ -545,6 +565,7 @@ window.WorldbookEditor = Object.freeze({
   flush: flushEditor,
   notify: toast,
   canSave: () => guardRaw() && $("#entryForm").checkValidity() && $("#dedupeModal").hidden && !$('#moveDialog').open,
+  revealTools: () => toolPanels.reveal(),
 });
 
 async function init() {
@@ -554,5 +575,6 @@ async function init() {
   state.activeId = null;
   renderAll();
   setupSidebarResize();
+  setupToolPanels();
 }
 init();
