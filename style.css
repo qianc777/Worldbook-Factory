@@ -1,0 +1,13 @@
+#ww-settings { padding: 10px; }
+#ww-settings h4 { margin: 0 0 6px; }
+#ww-settings p { margin: 0 0 10px; font-size: 12px; opacity: .8; }
+#ww-menu-open { width: 100%; text-align: left; color: inherit; background: transparent; border: 0; cursor: pointer; font: inherit; }
+dialog#worldbook-workshop-dialog { width: min(1480px, 97vw); height: 94dvh; max-width: none; max-height: none; margin: auto; padding: 0; border: 1px solid #728e7f; border-radius: 9px; background: #f7f8f5; box-shadow: 0 24px 80px #0008; overflow: hidden; color: #18221d; }
+dialog#worldbook-workshop-dialog[open] { display: flex; flex-direction: column; }
+dialog#worldbook-workshop-dialog::backdrop { background: #0e201bcc; }
+#worldbook-workshop-dialog .ww-host-bar { display: flex; flex: 0 0 38px; align-items: center; justify-content: space-between; padding: 0 14px; color: #d4e5db; background: #12291f; font: 12px "Segoe UI", "Microsoft YaHei", sans-serif; }
+#worldbook-workshop-dialog .ww-host-close { padding: 4px 10px; border: 1px solid #587064; border-radius: 4px; color: white; background: transparent; cursor: pointer; font: inherit; }
+#worldbook-workshop-dialog iframe { flex: 1; width: 100%; min-height: 0; border: 0; background: #f7f8f5; }
+@media (max-width: 680px) {
+  dialog#worldbook-workshop-dialog { width: 100vw; height: 100dvh; border: 0; border-radius: 0; }
+}
