@@ -1,13 +1,40 @@
-#ww-settings { padding: 10px; }
-#ww-settings h4 { margin: 0 0 6px; }
-#ww-settings p { margin: 0 0 10px; font-size: 12px; opacity: .8; }
-#ww-menu-open { width: 100%; text-align: left; color: inherit; background: transparent; border: 0; cursor: pointer; font: inherit; }
-dialog#worldbook-workshop-dialog { width: min(1480px, 97vw); height: 94dvh; max-width: none; max-height: none; margin: auto; padding: 0; border: 1px solid #728e7f; border-radius: 9px; background: #f7f8f5; box-shadow: 0 24px 80px #0008; overflow: hidden; color: #18221d; }
+.ww-icon { width: 19px; height: 19px; flex: 0 0 auto; display: block; }
+#ww-settings { padding: 14px; border: 1px solid #8884; border-radius: 10px; }
+#ww-settings h4 { display: flex; align-items: center; gap: 9px; margin: 0 0 8px; }
+#ww-settings p { margin: 0 0 12px; font-size: 12px; line-height: 1.6; opacity: .82; }
+.ww-version { display: inline-flex; align-items: center; padding: 3px 7px; border: 1px solid #8885; border-radius: 20px; font-size: 10px; font-weight: 500; white-space: nowrap; opacity: .8; }
+.ww-settings-actions { display: flex; gap: 7px; flex-wrap: wrap; }
+.ww-settings-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; width: auto; margin: 0; font: inherit; font-size: 12px; border-radius: 7px; }
+#ww-settings .ww-update-status { margin: 10px 0 0; }
+#ww-menu-open { display: flex; align-items: center; gap: 9px; width: 100%; text-align: left; color: inherit; background: transparent; border: 0; cursor: pointer; font: inherit; }
+#ww-world-open.ww-toolbar-button { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 32px; width: 32px; height: 32px; min-width: 32px; padding: 6px; border-radius: 7px; color: inherit; }
+#ww-world-open.ww-toolbar-button:hover { background: #78ae9529; }
+.ww-check-update:disabled { cursor: wait; opacity: .6; }
+.ww-reload-update[hidden], .ww-update-status[hidden] { display: none !important; }
+.ww-updating .ww-icon { animation: ww-spin 1.3s linear infinite; }
+@keyframes ww-spin { to { transform: rotate(360deg); } }
+dialog#worldbook-workshop-dialog { width: min(1760px, 98vw); height: 96dvh; max-width: none; max-height: none; margin: auto; padding: 0; border: 1px solid #728e7f; border-radius: 14px; background: #f7f8f5; box-shadow: 0 24px 80px #0008; overflow: hidden; color: #18221d; }
+#worldbook-workshop-dialog, #worldbook-workshop-dialog * { box-sizing: border-box; }
 dialog#worldbook-workshop-dialog[open] { display: flex; flex-direction: column; }
-dialog#worldbook-workshop-dialog::backdrop { background: #0e201bcc; }
-#worldbook-workshop-dialog .ww-host-bar { display: flex; flex: 0 0 38px; align-items: center; justify-content: space-between; padding: 0 14px; color: #d4e5db; background: #12291f; font: 12px "Segoe UI", "Microsoft YaHei", sans-serif; }
-#worldbook-workshop-dialog .ww-host-close { padding: 4px 10px; border: 1px solid #587064; border-radius: 4px; color: white; background: transparent; cursor: pointer; font: inherit; }
+dialog#worldbook-workshop-dialog::backdrop { background: #0e201bbd; backdrop-filter: blur(3px); }
+#worldbook-workshop-dialog .ww-host-bar { display: flex; flex: 0 0 auto; min-height: 48px; gap: 12px; align-items: center; justify-content: space-between; padding: 7px 16px; color: #d4e5db; background: #12291f; font: 12px "Segoe UI", "Microsoft YaHei", sans-serif; }
+#worldbook-workshop-dialog .ww-host-brand { display: flex; align-items: center; gap: 9px; min-width: 0; }
+#worldbook-workshop-dialog .ww-host-brand > .ww-icon { color: #e8c77c; }
+#worldbook-workshop-dialog .ww-host-brand strong { font-size: 12px; letter-spacing: .025em; white-space: nowrap; }
+#worldbook-workshop-dialog .ww-host-actions { display: flex; align-items: center; gap: 7px; flex-shrink: 0; }
+#worldbook-workshop-dialog .ww-host-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 32px; margin: 0; padding: 5px 10px; border: 1px solid #587064; border-radius: 7px; color: #edf5f0; background: transparent; cursor: pointer; font: inherit; white-space: nowrap; }
+#worldbook-workshop-dialog .ww-host-button:hover { background: #ffffff13; border-color: #9db7a9; }
+#worldbook-workshop-dialog .ww-host-button .ww-icon { width: 15px; height: 15px; }
+#worldbook-workshop-dialog .ww-reload-update { background: #e8c77c; border-color: #e8c77c; color: #182c23; }
+#worldbook-workshop-dialog > .ww-update-status { flex: 0 0 auto; margin: 0; padding: 9px 16px; background: #eaf1eb; color: #28563e; border-bottom: 1px solid #ccd9d0; font: 12px/1.5 "Segoe UI", "Microsoft YaHei", sans-serif; overflow-wrap: anywhere; }
+.ww-update-status.ww-error, #worldbook-workshop-dialog > .ww-update-status.ww-error { color: #ce6464; }
 #worldbook-workshop-dialog iframe { flex: 1; width: 100%; min-height: 0; border: 0; background: #f7f8f5; }
-@media (max-width: 680px) {
+#ww-settings button:focus-visible, #ww-world-open:focus-visible, #worldbook-workshop-dialog button:focus-visible { outline: 2px solid #bda05d; outline-offset: 2px; }
+@media (max-width: 800px) {
   dialog#worldbook-workshop-dialog { width: 100vw; height: 100dvh; border: 0; border-radius: 0; }
+  #worldbook-workshop-dialog .ww-host-bar { padding: 7px 10px; flex-wrap: wrap; gap: 6px; }
+  #worldbook-workshop-dialog .ww-host-brand strong { font-size: 11px; }
+  #worldbook-workshop-dialog .ww-host-actions { margin-left: auto; gap: 5px; }
+  #worldbook-workshop-dialog .ww-host-button { padding: 5px 8px; }
 }
+@media (prefers-reduced-motion: reduce) { .ww-updating .ww-icon { animation: none; } }

@@ -7,7 +7,7 @@
   "css": "style.css",
   "author": "Worldbook Workshop",
   "homePage": "https://github.com/qianc777/Worldbook-Factory",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "minimum_client_version": "1.17.0",
   "auto_update": false
 }
